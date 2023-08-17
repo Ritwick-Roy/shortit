@@ -20,21 +20,18 @@ let redisClient;
   await redisClient.connect();
 })();
 
-const checkCache = async (req, res, next) => {
-  const url = req.params.url;
 
-  try {
-    const cacheResults = await redisClient.get(url);
-    if (cacheResults) {
-      isCached = true;
-      results = JSON.parse(cacheResults);
-    }
+const checkCache = async (req,res,next) =>{
+  const url = req.params.url;
+  const cacheResults = await redisClient.get(url);
+  if(cacheResults)
+  {
+    console.log('sending from cache');
+    return res.json(JSON.parse(cacheResults));
+  } else {
     next();
-  } catch (error) {
-    console.error("Error:", error);
-    return res.status(500).json({ message: "Internal Server Error" });
   }
-};
+}
 
 app.get('/', async (req, res) => {
   const shortUrls = await ShortUrl.find();
@@ -51,7 +48,7 @@ app.get('/:shortUrl', checkCache, async (req, res) => {
   const shortUrl = await ShortUrl.findOne({ short: req.params.shortUrl });
   if (shortUrl == null)
     return res.sendStatus(404);
-
+  redisClient.setEx(url,5*24*3600, JSON.stringify(shortUrl));
   shortUrl.clicks++;
   shortUrl.save();
 
